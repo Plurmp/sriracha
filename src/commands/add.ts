@@ -204,7 +204,7 @@ function prepUploadOperation(message: Message, list: number, row: Row) {
 			message.channel.send('Downloading `' + imageLocation + '` and converting to JPG...');
 			const image = await Jimp.read(imageLocation!);
 			if (image.bitmap.height < image.bitmap.width) {
-				message.channel.send('The width of this cover image is greater than the height! This results in suboptimal pages on the site. **Please crop and upload an album cover manually using -img!**');
+				message.channel.send('The width of this cover image is greater than the height! This results in suboptimal pages on the site. **Please crop it and manually upload an album cover using -img!**');
 				reject('Epic Image Width Fail');
 				return;
 				// TODO chop this in half automatically and let the user decide
