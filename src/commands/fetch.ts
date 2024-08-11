@@ -179,6 +179,9 @@ export async function suggestFields(message: Message, row: Row, fields?: string)
 				if (title.includes('tsundere')) {
 					suggestions.tags.add('Tsundere');
 				}
+				if (title.includes('ongoing')) {
+					suggestions.note.add('Ongoing');
+				}
 				if (/boyfriend|husband|wife|girlfriend/.test(title)) {
 					suggestions.tags.add('Couple');
 				}
