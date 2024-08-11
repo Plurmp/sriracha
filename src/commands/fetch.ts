@@ -56,6 +56,8 @@ export async function setFetchedFields(message: Message, list: number, row: Row)
 				if (fetched.parodies.length) {
 					row.parody = fetched.parodies.join(', ');
 					await message.channel.send(`Updated missing parody \`${row.parody}\`!`);
+				} else if (siteTags.characters?.length || fetched.siteTags.characters?.length) {
+					await message.channel.send(`**Entry contains parody characters but it's missing a parody!**`);
 				} else {
 					await message.channel.send(`No parodies detected.`);
 				}
