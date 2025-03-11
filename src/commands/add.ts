@@ -1,5 +1,5 @@
 import Row from '../row';
-import { Message } from 'discord.js';
+import { AttachmentBuilder, Message, MessageReaction, StageChannel, User } from 'discord.js';
 import info from '../../config/globalinfo.json';
 import { logError, updatePublicServer } from './log';
 import pFetch from '../utils/page';
@@ -112,6 +112,10 @@ export async function flagAdd(message: Message, flags: Flags) {
 function prepUploadOperation(message: Message, list: number, row: Row) {
 	// eslint-disable-next-line no-async-promise-executor
 	return new Promise<void>(async (resolve, reject) => {
+		if (!message.channel.isSendable()) {
+			reject('how are you using this in a Stage Channel');
+			return;
+		}
 		try {
 			if (list != 4 && list != 9) { //if its not going to the final/licensed list, do nothing
 				resolve();
@@ -208,8 +212,8 @@ function prepUploadOperation(message: Message, list: number, row: Row) {
 
 			const response = await axios.get(imageLocation!,  { responseType: 'arraybuffer' })
 			const buffer = Buffer.from(response.data, "utf-8")
-			const image = sharp(buffer);
-			const imageData = await image.metadata();
+			let image = sharp(buffer);
+			let imageData = await image.metadata();
 
 			if (imageData.height == undefined || imageData.width == undefined) {
 				message.channel.send('Something went really wrong when fetching the cover. Please report this to the developers');
@@ -218,21 +222,56 @@ function prepUploadOperation(message: Message, list: number, row: Row) {
 			}
 
 			if (imageData.height < imageData.width) {
-				message.channel.send('The width of this cover image is greater than the height! This results in suboptimal pages on the site. **Please crop it and manually upload an album cover using -img!**');
-				reject('Epic Image Width Fail');
-				return;
-				// TODO chop this in half automatically and let the user decide
+				const exampleImage = image.clone();
+				// resizing based on ISO 216 A series paper sizes (1.414:1 ratio)
+				let width = Math.round(imageData.height! / 1.414);
+				let height = imageData.height!;
+				if (width > 350) {
+					height = Math.round(350 * height / width);
+					width = 350;
+				}
+				const exampleBuffer = await exampleImage.resize({
+					width,
+					height,
+					fit: 'cover',
+					position: 'left',
+				}).jpeg({quality: 70}).toBuffer();
+
+				const imageAttachment = new AttachmentBuilder(exampleBuffer, {name: "example.jpg"});
+				const confirmMessage = await message.channel.send({
+					content: 'The width of this cover image is greater than the height. Use this image instead?',
+					files: [imageAttachment]
+				});
+				await confirmMessage.react('✔');
+				await confirmMessage.react('❌');
+				const confirmReactionCollection = await confirmMessage.awaitReactions({
+					filter: (reaction: MessageReaction, user: User) => {
+						return ['✔', '❌'].includes(reaction.emoji.name!) && user.id === message.author.id;
+					},
+					max: 1,
+					time: 60_000,
+					errors: ['time'],
+				});
+				const confirmReaction = confirmReactionCollection.first();
+				if (confirmReaction?.emoji.name === '✔') {
+					image = sharp(exampleBuffer);
+					imageData = await image.metadata();
+				} else {
+					message.channel.send('Please crop the image yourself and manually set the image with -img!');
+					reject("Crop it yourself!");
+					return;
+				}
 			}
 
-			if (imageData.width > 350) {
+			if (imageData.width! > 350) {
 				image.resize(350);
 			}
-			const data = image.jpeg({quality: 70});
+			const imageJpg = image.jpeg({quality: 70});
 
 			const params = {
 				Bucket: info.awsBucket,
 				Key: row.uid + '.jpg',
-				Body: data,
+				Body: imageJpg,
 				ContentType: 'image/jpeg',
 				ACL: 'public-read-write',
 			};
