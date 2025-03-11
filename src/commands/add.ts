@@ -6,7 +6,7 @@ import pFetch from '../utils/page';
 import { entryEmbed, update } from './misc';
 import del from './delete';
 import * as sheets from '../sheetops';
-import Jimp from 'jimp';
+import sharp  from 'sharp';
 import { v4 as uuidv4 } from 'uuid';
 import AWS from 'aws-sdk';
 import axios from 'axios';
@@ -202,19 +202,29 @@ function prepUploadOperation(message: Message, list: number, row: Row) {
 
 			console.log(imageLocation);
 			message.channel.send('Downloading `' + imageLocation + '` and converting to JPG...');
-			const image = await Jimp.read(imageLocation!);
-			if (image.bitmap.height < image.bitmap.width) {
+
+			const response = await axios.get(imageLocation!,  { responseType: 'arraybuffer' })
+			const buffer = Buffer.from(response.data, "utf-8")
+			const image = sharp(buffer);
+			const imageData = await image.metadata();
+
+			if (imageData.height == undefined || imageData.width == undefined) {
+				message.channel.send('Something went really wrong when fetching the cover. Please report this to the developers');
+				reject('Image height or width is undefined');
+				return;
+			}
+
+			if (imageData.height < imageData.width) {
 				message.channel.send('The width of this cover image is greater than the height! This results in suboptimal pages on the site. **Please crop it and manually upload an album cover using -img!**');
 				reject('Epic Image Width Fail');
 				return;
 				// TODO chop this in half automatically and let the user decide
 			}
 
-			if (image.bitmap.width > 350) {
-				await image.resize(350, Jimp.AUTO);
+			if (imageData.width > 350) {
+				image.resize(350);
 			}
-			image.quality(70);
-			const data = await image.getBufferAsync(Jimp.MIME_JPEG);
+			const data = image.jpeg({quality: 70});
 
 			const params = {
 				Bucket: info.awsBucket,

@@ -5,8 +5,8 @@ import { log, logError } from './log';
 import { update } from './misc';
 import { fetchInfo, suggestFields } from './fetch';
 import * as sheets from '../sheetops';
-import { AxiosResponse, AxiosError } from 'axios';
-import Jimp from 'jimp';
+import axios, { AxiosResponse, AxiosError } from 'axios';
+import sharp from 'sharp';
 import validTags from '../../data/tags.json';
 import AWS from 'aws-sdk';
 import { Flags } from '../index';
@@ -484,14 +484,21 @@ export default async function edit(message: Message, list: number, ID: number, f
 				console.log(imageLocation);
 				message.channel.send('Downloading `' + imageLocation + '` and converting to JPG...');
 
-				const image = await Jimp.read(imageLocation);
+				const response = await axios.get(imageLocation,  { responseType: 'arraybuffer' })
+				const buffer = Buffer.from(response.data, "utf-8")
+				const image = sharp(buffer);
+				const imageData = await image.metadata();
+
+				if (imageData.height == undefined || imageData.width == undefined) {
+					message.channel.send('Something went really wrong when fetching the cover. Please report this to the developers');
+					return;
+				}
 	
-				if (image.bitmap.width > 350) {
-					await image.resize(350, Jimp.AUTO);
+				if (imageData.width > 350) {
+					image.resize(350);
 				}
 
-				image.quality(70);
-				const data = await image.getBufferAsync(Jimp.MIME_JPEG);
+				const data = image.jpeg({quality: 70});
 
 				const params = {
 					Bucket: info.awsBucket,
