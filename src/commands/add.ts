@@ -266,12 +266,12 @@ function prepUploadOperation(message: Message, list: number, row: Row) {
 			if (imageData.width! > 350) {
 				image.resize(350);
 			}
-			const data = image.jpeg({quality: 70});
+			const imageJpg = image.jpeg({quality: 70});
 
 			const params = {
 				Bucket: info.awsBucket,
 				Key: row.uid + '.jpg',
-				Body: data,
+				Body: imageJpg,
 				ContentType: 'image/jpeg',
 				ACL: 'public-read-write',
 			};
