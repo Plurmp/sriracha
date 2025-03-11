@@ -29,37 +29,40 @@ export async function flagAdd(message: Message, flags: Flags) {
 	}
 
 	if (flags.l) {
-		flags.l = flags.l.replace('http://', 'https://');
-		const siteRegex = flags.l.match(/hmarket|nhentai|e-hentai|imgchest|fakku|irodoricomics|ebookrenta/);
-		if (!siteRegex) {
-			message.channel.send('Link from unsupported site detected! Please try to only use links from Hmarket, nhentai, E-hentai, Imgchest, FAKKU, Idodori, or Renta!');
-			console.log('Link from unsupported site! This should never happen');
-			return false;
+		const links = flags.l.split(',').map((l: string) => l.trim());
+
+		for (let link of links) {
+			link = link.replace('http://', 'https://');
+			const siteRegex = link.match(/hmarket|nhentai|e-hentai|imgchest|fakku|irodoricomics|ebookrenta/);
+
+			if (!siteRegex) {
+				message.channel.send('Link from unsupported site detected! Please try to only use links from Hmarket, nhentai, E-hentai, Imgchest, FAKKU, Idodori, or Renta!');
+				console.log('Link from unsupported site! This should never happen');
+				return false;
+			}
+
+			const site = siteRegex[0];
+
+			switch (site) {
+				case 'hmarket':
+					flags.l1 = link;
+					break;
+				case 'nhentai':
+				case 'fakku':
+				case 'irodoricomics':
+				case 'ebookrenta':
+					flags.l2 = link;
+					break;
+				case 'e-hentai':
+					flags.l3 = link;
+					break;
+				case 'imgchest':
+					flags.l4 = link;
+					break;
+			}
 		}
 
-		const site = siteRegex[0];
-
-		switch (site) {
-			case 'hmarket':
-				flags.l1 = flags.l;
-				delete flags.l;
-				break;
-			case 'nhentai':
-			case 'fakku':
-			case 'irodoricomics':
-			case 'ebookrenta':
-				flags.l2 = flags.l;
-				delete flags.l;
-				break;
-			case 'e-hentai':
-				flags.l3 = flags.l;
-				delete flags.l;
-				break;
-			case 'imgchest':
-				flags.l4 = flags.l;
-				delete flags.l;
-				break;
-		}
+		delete flags.l;
 	}
 
 	// Change links to HTTPS and adds trailing slashes
