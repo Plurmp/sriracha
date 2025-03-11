@@ -230,15 +230,14 @@ function prepUploadOperation(message: Message, list: number, row: Row) {
 					height = Math.round(350 * height / width);
 					width = 350;
 				}
-				exampleImage.resize({
+				const exampleBuffer = await exampleImage.resize({
 					width,
 					height,
 					fit: 'cover',
 					position: 'left',
-				});
-				const exampleData = exampleImage.jpeg({quality: 70});
+				}).jpeg({quality: 70}).toBuffer();
 
-				const imageAttachment = new AttachmentBuilder(await exampleData.toBuffer(), {name: "example.jpg"});
+				const imageAttachment = new AttachmentBuilder(exampleBuffer, {name: "example.jpg"});
 				const confirmMessage = await message.channel.send({
 					content: 'The width of this cover image is greater than the height. Use this image instead?',
 					files: [imageAttachment]
@@ -255,8 +254,8 @@ function prepUploadOperation(message: Message, list: number, row: Row) {
 				});
 				const confirmReaction = confirmReactionCollection.first();
 				if (confirmReaction?.emoji.name === '✔') {
-					image = exampleImage;
-					imageData = await exampleImage.metadata();
+					image = sharp(exampleBuffer);
+					imageData = await image.metadata();
 				} else {
 					message.channel.send('Please crop the image yourself and manually set the image with -img!');
 					reject("Crop it yourself!");
