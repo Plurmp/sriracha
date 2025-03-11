@@ -246,8 +246,10 @@ function prepUploadOperation(message: Message, list: number, row: Row) {
 				await confirmMessage.react('✔');
 				await confirmMessage.react('❌');
 				const confirmReactionCollection = await confirmMessage.awaitReactions({
-					filter: (reaction: MessageReaction, user: User) => 
-						['✔', '❌'].includes(reaction.emoji.name!) && user.id === message.author.id,
+					filter: (reaction: MessageReaction, user: User) => {
+						return ['✔', '❌'].includes(reaction.emoji.name!) && user.id === message.author.id;
+					},
+					max: 1,
 					time: 60_000,
 					errors: ['time'],
 				});
