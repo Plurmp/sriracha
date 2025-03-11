@@ -403,9 +403,15 @@ export async function fetchInfo(message: Message, row: Row) {
 			}
 
 			if (author?.length) {
-				if (author.toLowerCase() in renameAuthors) {
-					author = renameAuthors[author.toLowerCase() as keyof typeof renameAuthors];
+				const allAuthors = author.split(', ');
+
+				for (let a = 0; a < allAuthors.length; a++) {
+					if (allAuthors[a].toLowerCase() in renameAuthors) {
+						allAuthors[a] = renameAuthors[allAuthors[a].toLowerCase() as keyof typeof renameAuthors];
+					}
 				}
+
+				author = allAuthors.join(', ');
 			}
 
 			if (characters?.length) {
