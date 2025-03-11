@@ -273,7 +273,7 @@ export async function suggestFields(message: Message, row: Row, fields?: string)
  * Fetch information from E-hentai/FAKKU/nhentai
  */
 export async function fetchInfo(message: Message, row: Row) {
-	const url = row.eh && row.eh != 'null' ? row.eh : row.nh ?? '';
+	const url = row.eh && row.eh != 'null' && !row.eh.includes('imgur') ? row.eh : row.nh ?? '';
 
 	if (!url.match(/e-hentai|nhentai|fakku/)) {
 		return { error: 'Invalid link. Can only fetch information from E-Hentai, nhentai, or FAKKU!' };
