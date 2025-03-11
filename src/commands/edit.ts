@@ -220,20 +220,16 @@ export default async function edit(message: Message, list: number, ID: number, f
 			}
 
 			//favorites are just a single field, easy to add and remove
-			if (flags.fav === null) {
-				delete miscField.favorite;
-			}
-
 			if (flags.fav) {
 				miscField.favorite = flags.fav;
-			}
-
-			if (flags.r === null) {
-				delete miscField.r;
+			} else if (flags.fav === null) {
+				delete miscField.favorite;
 			}
 
 			if (flags.r) {
 				miscField.reason = flags.r;
+			} else if (flags.r === null) {
+				delete miscField.r;
 			}
 
 			if (!Object.keys(miscField).length) {
