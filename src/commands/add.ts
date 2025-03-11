@@ -112,7 +112,7 @@ export async function flagAdd(message: Message, flags: Flags) {
 function prepUploadOperation(message: Message, list: number, row: Row) {
 	// eslint-disable-next-line no-async-promise-executor
 	return new Promise<void>(async (resolve, reject) => {
-		if (message.channel instanceof StageChannel) {
+		if (!message.channel.isSendable()) {
 			reject('how are you using this in a Stage Channel');
 			return;
 		}
@@ -212,8 +212,8 @@ function prepUploadOperation(message: Message, list: number, row: Row) {
 
 			const response = await axios.get(imageLocation!,  { responseType: 'arraybuffer' })
 			const buffer = Buffer.from(response.data, "utf-8")
-			const image = sharp(buffer);
-			const imageData = await image.metadata();
+			let image = sharp(buffer);
+			let imageData = await image.metadata();
 
 			if (imageData.height == undefined || imageData.width == undefined) {
 				message.channel.send('Something went really wrong when fetching the cover. Please report this to the developers');
@@ -238,28 +238,10 @@ function prepUploadOperation(message: Message, list: number, row: Row) {
 				});
 				const exampleData = exampleImage.jpeg({quality: 70});
 
-				const params = {
-					Bucket: info.awsBucket,
-					Key: row.uid + '.jpg',
-					Body: exampleData,
-					ContentType: 'image/jpeg',
-					ACL: 'public-read-write',
-				};
-				await new Promise<void>((resolve, reject) => {
-					s3.upload(params, (err: Error) => {
-						if (err) {
-							reject(err);
-							return;
-						}
-						resolve();
-						return;
-					});
-				});
-
-				const imageAttachment = new AttachmentBuilder(`https://wholesomelist.com/asset/${row.uid}.jpg`);
+				const imageAttachment = new AttachmentBuilder(await exampleData.toBuffer(), {name: "example.jpg"});
 				const confirmMessage = await message.channel.send({
 					content: 'The width of this cover image is greater than the height. Use this image instead?',
-					attachments: [imageAttachment]
+					files: [imageAttachment]
 				});
 				await confirmMessage.react('✔');
 				await confirmMessage.react('❌');
@@ -271,19 +253,16 @@ function prepUploadOperation(message: Message, list: number, row: Row) {
 				});
 				const confirmReaction = confirmReactionCollection.first();
 				if (confirmReaction?.emoji.name === '✔') {
-					row.img = `https://wholesomelist.com/asset/${row.uid}.jpg`;
-					message.channel.send(`Uploaded! The thumbnail can now be found at \`${row.img}\``);
-					resolve();
-					return;
+					image = exampleImage;
+					imageData = await exampleImage.metadata();
 				} else {
-					s3.deleteObject({Bucket: info.awsBucket, Key: row.uid + '.jpg'});
 					message.channel.send('Please crop the image yourself and manually set the image with -img!');
 					reject("Crop it yourself!");
 					return;
 				}
 			}
 
-			if (imageData.width > 350) {
+			if (imageData.width! > 350) {
 				image.resize(350);
 			}
 			const data = image.jpeg({quality: 70});
