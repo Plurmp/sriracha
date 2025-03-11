@@ -1,5 +1,5 @@
 import Row from '../row';
-import { Message } from 'discord.js';
+import { AttachmentBuilder, Message, MessageReaction, StageChannel, User } from 'discord.js';
 import info from '../../config/globalinfo.json';
 import { logError, updatePublicServer } from './log';
 import pFetch from '../utils/page';
@@ -112,6 +112,10 @@ export async function flagAdd(message: Message, flags: Flags) {
 function prepUploadOperation(message: Message, list: number, row: Row) {
 	// eslint-disable-next-line no-async-promise-executor
 	return new Promise<void>(async (resolve, reject) => {
+		if (message.channel instanceof StageChannel) {
+			reject('how are you using this in a Stage Channel');
+			return;
+		}
 		try {
 			if (list != 4 && list != 9) { //if its not going to the final/licensed list, do nothing
 				resolve();
@@ -218,10 +222,60 @@ function prepUploadOperation(message: Message, list: number, row: Row) {
 			}
 
 			if (imageData.height < imageData.width) {
-				message.channel.send('The width of this cover image is greater than the height! This results in suboptimal pages on the site. **Please crop it and manually upload an album cover using -img!**');
-				reject('Epic Image Width Fail');
-				return;
-				// TODO chop this in half automatically and let the user decide
+				const exampleImage = image.clone();
+				// resizing based on ISO 216 A series paper sizes (1.414:1 ratio)
+				exampleImage.resize({
+					width: Math.round(imageData.height / 1.414),
+					height: imageData.height,
+					fit: "cover",
+					position: "left",
+				});
+				exampleImage.resize(350);
+				const exampleData = exampleImage.jpeg({quality: 70});
+
+				const params = {
+					Bucket: info.awsBucket,
+					Key: row.uid + '.jpg',
+					Body: exampleData,
+					ContentType: 'image/jpeg',
+					ACL: 'public-read-write',
+				};
+				await new Promise<void>((resolve, reject) => {
+					s3.upload(params, (err: Error) => {
+						if (err) {
+							reject(err);
+							return;
+						}
+						resolve();
+						return;
+					});
+				});
+
+				const imageAttachment = new AttachmentBuilder(`https://wholesomelist.com/asset/${row.uid}.jpg`);
+				const confirmMessage = await message.channel.send({
+					content: 'The width of this cover image is greater than the height. Use this image instead?',
+					attachments: [imageAttachment]
+				});
+				await confirmMessage.react('✔');
+				await confirmMessage.react('❌');
+				const confirmReactionCollection = await confirmMessage.awaitReactions({
+					filter: (reaction: MessageReaction, user: User) => 
+						['✔', '❌'].includes(reaction.emoji.name!) && user.id === message.author.id,
+					time: 60_000,
+					errors: ['time'],
+				});
+				const confirmReaction = confirmReactionCollection.first();
+				if (confirmReaction?.emoji.name === '✔') {
+					row.img = `https://wholesomelist.com/asset/${row.uid}.jpg`;
+					message.channel.send(`Uploaded! The thumbnail can now be found at \`${row.img}\``);
+					resolve();
+					return;
+				} else {
+					s3.deleteObject({Bucket: info.awsBucket, Key: row.uid + '.jpg'});
+					message.channel.send('Please crop the image yourself and manually set the image with -img!');
+					reject("Crop it yourself!");
+					return;
+				}
 			}
 
 			if (imageData.width > 350) {
