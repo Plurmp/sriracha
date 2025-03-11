@@ -22,17 +22,23 @@ export default async function fetchThumbnail(message: Message, row: Row) {
 				// We are linking to a specific page, no need to use the API
 				pageUrl = row.eh;
 			} else {
-				const data = await fetchEHApi(row.eh);
+				const pageData = axios.get(row.eh).then((resp: AxiosResponse) => {
+					const respdata = resp?.data;
+					if (!respdata) {
+						throw new Error(`No response body found.`);
+					}
+	
+					return respdata;
+				});
 
-				if (data == null) {
-					message.channel.send('Unable to fetch E-Hentai cover image. Try linking the cover image with the -img tag.');
-					throw new Error(`Unable to fetch cover image for \`${row.eh}\``);
-				}
+				const pageBody = await pageData;
+				const pageSoup = new JSSoup(pageBody);
 
-				const galleryID = data.gid;
-				const pageToken = data.thumb.match(/.*?\/\w{2}\/(\w{10}).*$/)[1];
+				const imageMatch = pageSoup
+				.findAll("a")
+				.filter((s: { attrs: { href: string; }; }) => s?.attrs?.href?.match(/\/s\/[0-9a-f]{10}\/\d+-1$/))[0];
 
-				pageUrl = `https://e-hentai.org/s/${pageToken}/${galleryID}-1`;
+				pageUrl = imageMatch['attrs']['href'];
 			}
 
 			const response = axios.get(pageUrl).then((resp: AxiosResponse) => {
