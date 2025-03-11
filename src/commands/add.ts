@@ -224,13 +224,18 @@ function prepUploadOperation(message: Message, list: number, row: Row) {
 			if (imageData.height < imageData.width) {
 				const exampleImage = image.clone();
 				// resizing based on ISO 216 A series paper sizes (1.414:1 ratio)
+				let width = Math.round(imageData.height! / 1.414);
+				let height = imageData.height!;
+				if (width > 350) {
+					height = Math.round(350 * height / width);
+					width = 350;
+				}
 				exampleImage.resize({
-					width: Math.round(imageData.height / 1.414),
-					height: imageData.height,
-					fit: "cover",
-					position: "left",
+					width,
+					height,
+					fit: 'cover',
+					position: 'left',
 				});
-				exampleImage.resize(350);
 				const exampleData = exampleImage.jpeg({quality: 70});
 
 				const params = {
