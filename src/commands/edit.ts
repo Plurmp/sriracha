@@ -155,11 +155,7 @@ export default async function edit(message: Message, list: number, ID: number, f
 				if (miscField.altLinks) {
 					const altLength = miscField.altLinks.length;
 
-					for (let i = altLength - 1; i >= 0; i--) {
-						if (miscField.altLinks[i].name === flags.delalt) {
-							miscField.altLinks.splice(i, 1);
-						} //delete operations calls for splicing the array to the requested field
-					}
+					miscField.altLinks = miscField.altLinks.filter((l: Record<string, string>) => l.name.toLowerCase() !== flags.delalt?.toLowerCase());
 
 					if (altLength == miscField.altLinks.length) {
 						message.channel.send(`Entry \`${list}#${ID}\` did not contain the alt link \`${flags.delalt}\`!`);
@@ -205,11 +201,7 @@ export default async function edit(message: Message, list: number, ID: number, f
 				if (miscField.series) {
 					const seriesLength = miscField.series.length;
 
-					for (let i = seriesLength - 1; i >= 0; i--) {
-						if (miscField.series[i].name === flags.delseries) {
-							miscField.series.splice(i, 1);
-						}
-					}
+					miscField.series = miscField.series.filter((s: Record<string, string>) => s.name.toLowerCase() !== flags.delseries?.toLowerCase());
 
 					if (seriesLength == miscField.series.length) {
 						message.channel.send(`Entry \`${list}#${ID}\` did not contain the series \`${flags.delseries}\`!`);
